@@ -1,6 +1,7 @@
 const GRID_SIZE = 4;
 const WIN_TILE = 2048;
 const STORAGE_KEY = "bestScore";
+const GAME_STATE_KEY = "gameState";
 
 class Game2048 {
   constructor() {
@@ -22,7 +23,8 @@ class Game2048 {
 
     this.createBoard();
     this.bindEvents();
-    this.start();
+    this.bestElement.textContent = this.bestScore;
+    this.start(true);
   }
 
   createEmptyGrid() {
@@ -89,6 +91,7 @@ class Game2048 {
     this.keepGoingButton.addEventListener("click", () => {
       this.keepPlaying = true;
       this.hideMessage();
+      this.saveState();
     });
 
     const resetHandler = () => this.start();
@@ -97,9 +100,29 @@ class Game2048 {
     this.newGameButton.addEventListener("click", resetHandler);
   }
 
-  start() {
+  start(loadSaved = false) {
+    if (loadSaved) {
+      const savedState = this.loadState();
+      if (savedState) {
+        this.grid = savedState.grid;
+        this.won = savedState.won;
+        this.keepPlaying = savedState.keepPlaying;
+        this.newTilePositions = [];
+        this.updateScore(savedState.score);
+        this.draw();
+        if (this.won && !this.keepPlaying) {
+          this.showMessage("You win!", true);
+        } else if (!this.canMove()) {
+          this.showMessage("Game over!");
+        } else {
+          this.hideMessage();
+        }
+        this.saveState();
+        return;
+      }
+    }
+
     this.grid = this.createEmptyGrid();
-    this.score = 0;
     this.won = false;
     this.keepPlaying = false;
     this.newTilePositions = [];
@@ -108,6 +131,7 @@ class Game2048 {
     this.updateScore(0);
     this.draw();
     this.hideMessage();
+    this.saveState();
   }
 
   mapKeyToDirection(key) {
@@ -208,6 +232,8 @@ class Game2048 {
     } else if (!this.canMove()) {
       this.showMessage("Game over!");
     }
+
+    this.saveState();
   }
 
   mergeRow(row) {
@@ -295,6 +321,53 @@ class Game2048 {
 
   hideMessage() {
     this.messageElement.hidden = true;
+  }
+
+  saveState() {
+    const state = {
+      grid: this.grid,
+      score: this.score,
+      won: this.won,
+      keepPlaying: this.keepPlaying,
+    };
+
+    try {
+      localStorage.setItem(GAME_STATE_KEY, JSON.stringify(state));
+    } catch (error) {
+      console.error("Failed to save game state", error);
+    }
+  }
+
+  loadState() {
+    const saved = localStorage.getItem(GAME_STATE_KEY);
+    if (!saved) return null;
+
+    try {
+      const parsed = JSON.parse(saved);
+      if (!Array.isArray(parsed?.grid) || parsed.grid.length !== GRID_SIZE) {
+        return null;
+      }
+
+      const grid = parsed.grid.map((row) => {
+        if (!Array.isArray(row) || row.length !== GRID_SIZE) {
+          throw new Error("Invalid grid row");
+        }
+        return row.map((value) => {
+          const numeric = Number(value);
+          return Number.isFinite(numeric) ? numeric : 0;
+        });
+      });
+
+      return {
+        grid,
+        score: Number(parsed.score) || 0,
+        won: Boolean(parsed.won),
+        keepPlaying: Boolean(parsed.keepPlaying),
+      };
+    } catch (error) {
+      console.error("Failed to load game state", error);
+      return null;
+    }
   }
 }
 
