@@ -2,6 +2,10 @@ const GRID_SIZE = 4;
 const WIN_TILE = 2048;
 const STORAGE_KEY = "bestScore";
 const GAME_STATE_KEY = "gameState";
+const INSTALL_DISMISSED_KEY = "pwaInstallDismissedAt";
+const INSTALL_STATUS_KEY = "pwaInstalled";
+const INSTALL_COOLDOWN_DAYS = 7;
+const INSTALL_COOLDOWN_MS = INSTALL_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
 
 class Game2048 {
   constructor() {
@@ -16,7 +20,7 @@ class Game2048 {
 
     this.grid = this.createEmptyGrid();
     this.score = 0;
-    this.bestScore = Number(localStorage.getItem(STORAGE_KEY)) || 0;
+    this.bestScore = this.loadBestScore();
     this.won = false;
     this.keepPlaying = false;
     this.newTilePositions = [];
@@ -281,7 +285,7 @@ class Game2048 {
     this.scoreElement.textContent = this.score;
     if (this.score > this.bestScore) {
       this.bestScore = this.score;
-      localStorage.setItem(STORAGE_KEY, String(this.bestScore));
+      this.saveBestScore(this.bestScore);
     }
     this.bestElement.textContent = this.bestScore;
   }
@@ -339,7 +343,15 @@ class Game2048 {
   }
 
   loadState() {
-    const saved = localStorage.getItem(GAME_STATE_KEY);
+    let saved = null;
+
+    try {
+      saved = localStorage.getItem(GAME_STATE_KEY);
+    } catch (error) {
+      console.error("Failed to read saved game state", error);
+      return null;
+    }
+
     if (!saved) return null;
 
     try {
@@ -369,6 +381,164 @@ class Game2048 {
       return null;
     }
   }
+
+  loadBestScore() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (!stored) {
+        return 0;
+      }
+
+      const numeric = Number(stored);
+      return Number.isFinite(numeric) ? numeric : 0;
+    } catch (error) {
+      console.error("Failed to read best score", error);
+      return 0;
+    }
+  }
+
+  saveBestScore(value) {
+    try {
+      localStorage.setItem(STORAGE_KEY, String(value));
+    } catch (error) {
+      console.error("Failed to save best score", error);
+    }
+  }
 }
 
 const game = new Game2048();
+setupServiceWorker();
+setupInstallPrompt();
+
+function setupServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("sw.js")
+      .catch((error) => console.error("Service worker registration failed", error));
+  });
+}
+
+function setupInstallPrompt() {
+  const installButton = document.getElementById("install-app");
+  if (!installButton) return;
+
+  let deferredPrompt = null;
+
+  const hideButton = () => {
+    installButton.hidden = true;
+    installButton.disabled = false;
+  };
+
+  const showButton = () => {
+    installButton.hidden = false;
+    installButton.disabled = false;
+  };
+
+  hideButton();
+
+  const alreadyInstalled = () => {
+    try {
+      if (localStorage.getItem(INSTALL_STATUS_KEY) === "true") {
+        return true;
+      }
+    } catch (error) {
+      console.error("Failed to read install status", error);
+    }
+
+    if (isStandaloneDisplay()) {
+      try {
+        localStorage.setItem(INSTALL_STATUS_KEY, "true");
+      } catch (error) {
+        console.error("Failed to persist install status", error);
+      }
+      return true;
+    }
+
+    return false;
+  };
+
+  if (alreadyInstalled()) {
+    hideButton();
+  }
+
+  window.addEventListener("beforeinstallprompt", (event) => {
+    if (alreadyInstalled()) return;
+
+    event.preventDefault();
+    deferredPrompt = event;
+
+    if (hasRecentInstallDismissal()) {
+      hideButton();
+      return;
+    }
+
+    showButton();
+  });
+
+  installButton.addEventListener("click", async () => {
+    if (!deferredPrompt) {
+      hideButton();
+      return;
+    }
+
+    installButton.disabled = true;
+    deferredPrompt.prompt();
+    const choice = await deferredPrompt.userChoice;
+
+    if (choice.outcome === "accepted") {
+      try {
+        localStorage.setItem(INSTALL_STATUS_KEY, "true");
+        localStorage.removeItem(INSTALL_DISMISSED_KEY);
+      } catch (error) {
+        console.error("Failed to persist install status", error);
+      }
+      hideButton();
+    } else {
+      markInstallDismissed();
+      hideButton();
+    }
+
+    deferredPrompt = null;
+  });
+
+  window.addEventListener("appinstalled", () => {
+    try {
+      localStorage.setItem(INSTALL_STATUS_KEY, "true");
+      localStorage.removeItem(INSTALL_DISMISSED_KEY);
+    } catch (error) {
+      console.error("Failed to persist install status", error);
+    }
+    hideButton();
+  });
+}
+
+function hasRecentInstallDismissal() {
+  try {
+    const stored = localStorage.getItem(INSTALL_DISMISSED_KEY);
+    if (!stored) return false;
+
+    const timestamp = Number(stored);
+    if (!Number.isFinite(timestamp)) return false;
+
+    return Date.now() - timestamp < INSTALL_COOLDOWN_MS;
+  } catch (error) {
+    console.error("Failed to read install dismissal", error);
+    return false;
+  }
+}
+
+function markInstallDismissed() {
+  try {
+    localStorage.setItem(INSTALL_DISMISSED_KEY, String(Date.now()));
+  } catch (error) {
+    console.error("Failed to persist install dismissal", error);
+  }
+}
+
+function isStandaloneDisplay() {
+  const standaloneMatch =
+    typeof window.matchMedia === "function" && window.matchMedia("(display-mode: standalone)").matches;
+  return standaloneMatch || window.navigator.standalone === true;
+}
