@@ -1,0 +1,274 @@
+:root {
+  --bg-color: #faf8ef;
+  --board-color: #bbada0;
+  --cell-color: rgba(238, 228, 218, 0.35);
+  --tile-color: #eee4da;
+  --text-color: #776e65;
+  --accent-color: #8f7a66;
+  --highlight-color: #edc22e;
+  font-family: "Clear Sans", "Helvetica Neue", Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg-color);
+  color: var(--text-color);
+  display: flex;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.game-container {
+  max-width: 520px;
+  width: 100%;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.game-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.game-title h1 {
+  font-size: 3rem;
+  margin: 0;
+}
+
+.game-title p {
+  margin: 0.25rem 0 0;
+  line-height: 1.4;
+}
+
+.scoreboard {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.score {
+  background: var(--board-color);
+  color: #fff;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  text-align: center;
+  min-width: 90px;
+}
+
+.score .label {
+  display: block;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+.score .value {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.controls {
+  display: flex;
+  justify-content: flex-end;
+}
+
+button {
+  border: none;
+  border-radius: 0.5rem;
+  background: var(--highlight-color);
+  color: #f9f6f2;
+  font-weight: 700;
+  padding: 0.75rem 1.5rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+button:hover,
+button:focus-visible {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+.board-wrapper {
+  position: relative;
+}
+
+.board {
+  position: relative;
+  background: var(--board-color);
+  border-radius: 1rem;
+  padding: 1rem;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 1rem;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  touch-action: none;
+}
+
+.cell {
+  background: var(--cell-color);
+  border-radius: 0.75rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 2rem;
+  font-weight: 700;
+  color: transparent;
+  transition: transform 0.1s ease, background 0.1s ease, color 0.1s ease;
+}
+
+.cell.new {
+  animation: pop 0.2s ease;
+}
+
+.tile {
+  width: 100%;
+  height: 100%;
+  color: #776e65;
+}
+
+.tile-2 {
+  background: #eee4da;
+  color: #776e65;
+}
+
+.tile-4 {
+  background: #ede0c8;
+  color: #776e65;
+}
+
+.tile-8 {
+  background: #f2b179;
+  color: #f9f6f2;
+}
+
+.tile-16 {
+  background: #f59563;
+  color: #f9f6f2;
+}
+
+.tile-32 {
+  background: #f67c5f;
+  color: #f9f6f2;
+}
+
+.tile-64 {
+  background: #f65e3b;
+  color: #f9f6f2;
+}
+
+.tile-128 {
+  background: #edcf72;
+  color: #f9f6f2;
+  font-size: 1.75rem;
+}
+
+.tile-256 {
+  background: #edcc61;
+  color: #f9f6f2;
+  font-size: 1.75rem;
+}
+
+.tile-512 {
+  background: #edc850;
+  color: #f9f6f2;
+  font-size: 1.75rem;
+}
+
+.tile-1024 {
+  background: #edc53f;
+  color: #f9f6f2;
+  font-size: 1.5rem;
+}
+
+.tile-2048 {
+  background: #edc22e;
+  color: #f9f6f2;
+  font-size: 1.5rem;
+}
+
+.tile[class*="tile-"][class*="tile-"]:not(.tile-2):not(.tile-4):not(.tile-8):not(.tile-16):not(.tile-32):not(.tile-64):not(.tile-128):not(.tile-256):not(.tile-512):not(.tile-1024):not(.tile-2048) {
+  background: #3c3a32;
+  color: #f9f6f2;
+  font-size: 1.25rem;
+}
+
+.tile.new {
+  animation: pop 0.2s ease;
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.6);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.message {
+  position: absolute;
+  inset: 0;
+  background: rgba(238, 228, 218, 0.73);
+  border-radius: 1rem;
+  display: grid;
+  place-items: center;
+}
+
+.message[hidden] {
+  display: none;
+}
+
+.message-content {
+  text-align: center;
+  display: grid;
+  gap: 1rem;
+}
+
+.message-content button {
+  background: var(--accent-color);
+}
+
+@media (max-width: 480px) {
+  body {
+    padding: 1.5rem 1rem;
+  }
+
+  .game-title h1 {
+    font-size: 2.5rem;
+  }
+
+  .scoreboard {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .score {
+    flex: 1;
+  }
+
+  button {
+    width: 100%;
+  }
+
+  .controls {
+    justify-content: center;
+  }
+
+  .tile {
+    font-size: 1.5rem;
+  }
+}
